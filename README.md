@@ -44,3 +44,6 @@ Use this script to add parameters that rarely change or customize the opponent s
 * `RatingDeltaMax`(1000) Max MMR difference between you and your opponent
 * `LastPlayedAgoMax`(2400) Seconds
 * `Limit`(3) Opponent suggestion limit
+
+### Misc parameters
+* `Test` Test mode for devs. Replaces your name with a barcode and allows you to test the script in a custom/vs ai game.
