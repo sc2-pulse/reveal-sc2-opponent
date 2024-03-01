@@ -39,6 +39,7 @@ $CurrentGame = [PSCustomObject]@{
     IsReplay = $false
     DisplayTime = 999999
     Players = @()
+    ActivePlayerCount = 0
     Status = [GameStatus]::Old
 }
 if($Notification) {
@@ -159,6 +160,8 @@ function Get-Game {
         Write-Warning "SC2 client API not found. Launch the game."
         return
     }
+    $ActivePlayerCount = ($Game.Players | Where {$_.result -eq "undecided"} | Measure-Object).Count
+    Add-Member -InputObject $Game -Name ActivePlayerCount -Value $ActivePlayerCount -MemberType NoteProperty
     $Status = if($Game.Players.Length -eq 0) {
         [GameStatus]::None
     } else { 
@@ -167,7 +170,8 @@ function Get-Game {
                 [GameStatus]::Unsupported
         } else {
             if($Game.Players.Length -eq $CurrentGame.Players.Length -and 
-                $Game.DisplayTime -ge $CurrentGame.DisplayTime) {
+                $Game.DisplayTime -ge $CurrentGame.DisplayTime -and
+                $Game.ActivePlayerCount -le $CurrentGame.ActivePlayerCount) {
                     [GameStatus]::Old
             } else {
                  [GameStatus]::New
