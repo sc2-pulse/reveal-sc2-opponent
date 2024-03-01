@@ -18,6 +18,7 @@ The opponent's in-game tag will be replaced with the following info, sorted by p
 * Opponents who are playing their first game in last 40 minutes can't be detected.
 * SC2 Pulse is about 5 minutes behind, and revealed data is provided by SC2 Pulse editors, so the data is approximate and may be invalid.
 * Windows console doesn't support asian glyphs by default. If you use the console and want to see glyphs, then you need to change the default font to `MS Gothic`. RMB on the console header->Defaults->Font.
+* When using Windows notifications for the first time, Windows will ask you for emergency notification permission for this script. You must allow it. Emergency notifications are always on top of everything else, otherwise notifications will be created but you won't see them because they will be below the SC2 game client window. Make sure the `Get notifications from apps and other senders` option is enabled in `Notification & Actions` section of your Windows settings.
 
 ## Running
 Download script files(.bat and .ps1) to the same directory. Run the `reveal-sc2-opponent.bat` script.
