@@ -29,7 +29,7 @@ You need to provide a sc2pulse character id and a race you will be playing. You 
 * Copy your profile id from the profile url. For example `https://www.nephest.com/sc2/?type=character&id=236695&m=1#player-stats-mmr`, copy the id parameter, in this case the id is `236695`.
 
 ### reveal-sc2-opponent.bat
-Use this script to add parameters that rarely change or customize the opponent search algorithm. RMB->edit to edit.
+Use this script to add parameters that rarely change(character id, race) or customize the opponent search algorithm. RMB->edit to edit. `-ParameterName parameterValue` or just `-ParameterName` for switch parameters.
 
 ### Required parameters
 * `CharacterId` SC2Pulse character id
