@@ -139,7 +139,7 @@ function Get-Opponent {
         [Object[]] $Player
     )
     
-    foreach($CurPlayer in $Players) {
+    foreach($CurPlayer in $Player) {
         if($CurPlayer.Type -eq "computer") {
             continue
         }
