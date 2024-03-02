@@ -16,10 +16,12 @@
 )
 
 Add-Type -AssemblyName Microsoft.PowerShell.Commands.Utility
-if($Test) { Write-Warning "Test mode" }
-if(-not [string]::IsNullOrEmpty($FilePath)) {
+if(Test-Path -Path $FilePath) {
     Clear-Content -Path $FilePath
     Write-Verbose "Cleared $FilePath"
+} else {
+    New-Item -Path $FilePath -ItemType File
+    Write-Verbose "Created and cleared $FilePath"
 }
 
 $Sc2PulseApiRoot = "https://sc2pulse.nephest.com/sc2/api"
