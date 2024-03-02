@@ -298,6 +298,7 @@ function Write-All {
         [string] $FilePath,
         [Windows.UI.Notifications.ToastNotifier] $ToastNotifier
     )
+    Write-Output -InputObject $Player
     if(-not [string]::IsNullOrEmpty($FilePath)) {
         $Player | Out-File -FilePath $FilePath -Encoding utf8
         Write-Host "Saved to file ${FilePath}"
