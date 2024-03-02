@@ -17,6 +17,10 @@
 
 Add-Type -AssemblyName Microsoft.PowerShell.Commands.Utility
 if($Test) { Write-Warning "Test mode" }
+if(-not [string]::IsNullOrEmpty($FilePath)) {
+    Clear-Content -Path $FilePath
+    Write-Verbose "Cleared $FilePath"
+}
 
 $Sc2PulseApiRoot = "https://sc2pulse.nephest.com/sc2/api"
 $Sc2ClientApiRoot = "http://127.0.0.1:6119"
