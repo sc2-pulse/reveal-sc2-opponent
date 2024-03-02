@@ -186,6 +186,27 @@ function Get-Game {
     return $Game
 }
 
+function Get-PlayerTeam {
+    param(
+        [int32] $Season,
+        [string] $Race,
+        [string] $Queue,
+        [int64] $CharacterId,
+        [int32] $Depth = 3
+    )
+
+    for(($i = 0); $i -lt $Depth; $i++) {
+        $PlayerTeam = (Invoke-EnhancedRestMethod -Uri ("${Sc2PulseApiRoot}/group/team" +
+            "?season=$($Season - $i)" +
+            "&queue=${Queue}" +
+            "&race=${Race}" +
+            "&characterId=${CharacterId}"))
+        if($PlayerTeam -ne $null -and $PlayerTeam.Length -eq 1) {
+            return $PlayerTeam[0]
+        }
+    }
+}
+
 function Get-UnmaskedPlayer {
     param(
         [Object] $GameOpponent,
@@ -202,13 +223,13 @@ function Get-UnmaskedPlayer {
         -Activity $SearchActivity `
         -Status "Pulling reference team" `
         -PercentComplete 0
-    $PlayerTeam = (Invoke-EnhancedRestMethod -Uri ("${Sc2PulseApiRoot}/group/team" +
-        "?season=${Season}" +
-        "&queue=${Queue}" +
-        "&race=${Race}" +
-        "&characterId=${CharacterId}"))[0]
+    $PlayerTeam = Get-PlayerTeam `
+        -Season $Season `
+        -Race $Race `
+        -Queue $Queue `
+        -CharacterId $CharacterId
     if($PlayerTeam -eq $null) {
-        Write-Error "Can't find the reference team"
+        Write-Error "Can't find the reference team. Play at least 1 ranked game and wait for several minutes."
         Write-Progress -Activity $SearchActivity -Status "Failed" -Completed
         return
     }
