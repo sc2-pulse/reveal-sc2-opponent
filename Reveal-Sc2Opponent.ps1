@@ -194,7 +194,8 @@ function Get-Game {
             ($Game.Players | Where {$_.type -eq "user"} | Measure-Object).Count -ne $ValidPlayerCount) {
                 [GameStatus]::Unsupported
         } else {
-            if($Game.Players.Length -eq $CurrentGame.Players.Length -and 
+            if(-not $CurrentGame.isReplay -and
+                $Game.Players.Length -eq $CurrentGame.Players.Length -and
                 $Game.DisplayTime -ge $CurrentGame.DisplayTime -and
                 $Game.ActivePlayerCount -le $CurrentGame.ActivePlayerCount) {
                     [GameStatus]::Old
