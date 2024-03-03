@@ -15,6 +15,21 @@
     [switch]$Test
 )
 
+<#
+    .quickedit
+    disable console quick edit mode to prevent the user from accidentally
+    pausing the script by clicking on it
+#>
+Add-Type -MemberDefinition @"
+[DllImport("kernel32.dll", SetLastError=true)]
+public static extern bool SetConsoleMode(IntPtr hConsoleHandle, int mode);
+[DllImport("kernel32.dll", SetLastError=true)]
+public static extern IntPtr GetStdHandle(int handle);
+"@ -Namespace Win32 -Name NativeMethods
+$Handle = [Win32.NativeMethods]::GetStdHandle(-10)
+[Win32.NativeMethods]::SetConsoleMode($Handle, 0x0080)
+Write-Verbose "Disabled console quick edit"
+
 Add-Type -AssemblyName Microsoft.PowerShell.Commands.Utility
 if($Test) { Write-Warning "Test mode" }
 
