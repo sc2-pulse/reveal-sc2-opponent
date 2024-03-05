@@ -1,18 +1,7 @@
-﻿
-
-
-
-
-
-
-
-$FilePath = if ($args[0]) { $args[0] } else { "opponent.txt" }   
+﻿$FilePath = if ($args[0]) { $args[0] } else { "opponent.txt" }   
 $Limit = if ($args[1]) { [int]$args[1] } else { 3 }        
 
-# The above code is used to get the file path and limit from the command line arguments. If the arguments are not passed, then the default values are used.
 
-# then we run "Install-Module -Name ps2exe -Scope CurrentUser" to install the "powershell to exe" module
-# and then the compile command is:    "Invoke-ps2exe -inputFile path\to\Reveal-Sc2Opponent.ps1 -outputFile path\to\Reveal-Sc2Opponent.exe"
 
 param(
     [Parameter(Mandatory=$true)]
