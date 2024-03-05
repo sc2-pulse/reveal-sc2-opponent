@@ -1,4 +1,42 @@
-﻿param(
+﻿
+<#PSScriptInfo
+
+.VERSION 0.1.0
+
+.GUID db8ffc68-4388-4119-b437-1f56c999611e
+
+.AUTHOR nephestdev@gmail.com
+
+.COMPANYNAME 
+
+.COPYRIGHT 
+
+.TAGS 
+
+.LICENSEURI https://github.com/sc2-pulse/reveal-sc2-opponent/blob/main/LICENSE.txt
+
+.PROJECTURI https://github.com/sc2-pulse/reveal-sc2-opponent
+
+.ICONURI https://sc2pulse.nephest.com/sc2/static/icon/misc/favicon-32.png
+
+.EXTERNALMODULEDEPENDENCIES 
+
+.REQUIREDSCRIPTS 
+
+.EXTERNALSCRIPTDEPENDENCIES 
+
+.RELEASENOTES
+
+
+#>
+
+<# 
+
+.DESCRIPTION 
+ Reveals ranked 1v1 opponent names for StarCraft2 
+
+#> 
+param(
     [Parameter(Mandatory=$true)]
     [int64]$CharacterId,
     [Parameter(Mandatory=$true)]
@@ -15,6 +53,7 @@
     [switch]$Test
 )
 
+Test-ScriptFileInfo $PSCommandPath
 <#
     .quickedit
     disable console quick edit mode to prevent the user from accidentally
