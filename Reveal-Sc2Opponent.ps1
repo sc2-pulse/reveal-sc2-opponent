@@ -1,4 +1,9 @@
-﻿param(
+﻿$FilePath = if ($args[0]) { $args[0] } else { "opponent.txt" }   
+$Limit = if ($args[1]) { [int]$args[1] } else { 3 }        
+
+
+
+param(
     [Parameter(Mandatory=$true)]
     [int64]$CharacterId,
     [Parameter(Mandatory=$true)]
@@ -15,31 +20,14 @@
     [switch]$Test
 )
 
-<#
-    .quickedit
-    disable console quick edit mode to prevent the user from accidentally
-    pausing the script by clicking on it
-#>
-Add-Type -MemberDefinition @"
-[DllImport("kernel32.dll", SetLastError=true)]
-public static extern bool SetConsoleMode(IntPtr hConsoleHandle, int mode);
-[DllImport("kernel32.dll", SetLastError=true)]
-public static extern IntPtr GetStdHandle(int handle);
-"@ -Namespace Win32 -Name NativeMethods
-$Handle = [Win32.NativeMethods]::GetStdHandle(-10)
-[Win32.NativeMethods]::SetConsoleMode($Handle, 0x0080)
-Write-Verbose "Disabled console quick edit"
-
 Add-Type -AssemblyName Microsoft.PowerShell.Commands.Utility
-if($Test) { Write-Warning "Test mode" }
-
 if(-not [string]::IsNullOrEmpty($FilePath)) {
     if(Test-Path -Path $FilePath) {
         Clear-Content -Path $FilePath
         Write-Verbose "Cleared $FilePath"
     } else {
         New-Item -Path $FilePath -ItemType File
-        Write-Verbose "Created $FilePath"
+        Write-Verbose "Created and cleared $FilePath"
     }
 }
 
@@ -154,7 +142,7 @@ function Get-Opponent {
         [Object[]] $Player
     )
     
-    foreach($CurPlayer in $Player) {
+    foreach($CurPlayer in $Players) {
         if($CurPlayer.Type -eq "computer") {
             continue
         }
@@ -194,8 +182,7 @@ function Get-Game {
             ($Game.Players | Where {$_.type -eq "user"} | Measure-Object).Count -ne $ValidPlayerCount) {
                 [GameStatus]::Unsupported
         } else {
-            if(-not $CurrentGame.isReplay -and
-                $Game.Players.Length -eq $CurrentGame.Players.Length -and
+            if($Game.Players.Length -eq $CurrentGame.Players.Length -and 
                 $Game.DisplayTime -ge $CurrentGame.DisplayTime -and
                 $Game.ActivePlayerCount -le $CurrentGame.ActivePlayerCount) {
                     [GameStatus]::Old
@@ -206,27 +193,6 @@ function Get-Game {
     }
     Add-Member -InputObject $Game -Name Status -Value $Status -MemberType NoteProperty
     return $Game
-}
-
-function Get-PlayerTeam {
-    param(
-        [int32] $Season,
-        [string] $Race,
-        [string] $Queue,
-        [int64] $CharacterId,
-        [int32] $Depth = 3
-    )
-
-    for(($i = 0); $i -lt $Depth; $i++) {
-        $PlayerTeam = (Invoke-EnhancedRestMethod -Uri ("${Sc2PulseApiRoot}/group/team" +
-            "?season=$($Season - $i)" +
-            "&queue=${Queue}" +
-            "&race=${Race}" +
-            "&characterId=${CharacterId}"))
-        if($PlayerTeam -ne $null -and $PlayerTeam.Length -eq 1) {
-            return $PlayerTeam[0]
-        }
-    }
 }
 
 function Get-UnmaskedPlayer {
@@ -245,13 +211,13 @@ function Get-UnmaskedPlayer {
         -Activity $SearchActivity `
         -Status "Pulling reference team" `
         -PercentComplete 0
-    $PlayerTeam = Get-PlayerTeam `
-        -Season $Season `
-        -Race $Race `
-        -Queue $Queue `
-        -CharacterId $CharacterId
+    $PlayerTeam = (Invoke-EnhancedRestMethod -Uri ("${Sc2PulseApiRoot}/group/team" +
+        "?season=${Season}" +
+        "&queue=${Queue}" +
+        "&race=${Race}" +
+        "&characterId=${CharacterId}"))[0]
     if($PlayerTeam -eq $null) {
-        Write-Error "Can't find the reference team. Play at least 1 ranked game and wait for several minutes."
+        Write-Error "Can't find the reference team"
         Write-Progress -Activity $SearchActivity -Status "Failed" -Completed
         return
     }
