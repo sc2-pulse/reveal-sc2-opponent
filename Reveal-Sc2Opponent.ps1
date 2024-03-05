@@ -310,10 +310,16 @@ function Get-UnmaskedPlayer {
         Add-Member -InputObject $Team -Name LastPlayedAgo -Value $LastPlayedAgo -MemberType NoteProperty
         Add-Member -InputObject $Team -Name RatingDelta -Value $RatingDelta -MemberType NoteProperty
     }
-     
-    $UnmaskedPlayers = $OpponentTeams |
-        Where-Object { $_.LastPlayedAgo -le $LastPlayedAgoMax -and 
-            $_.RatingDelta -le $RatingDeltaMax } |
+
+    $CloseOpponentTeams = $OpponentTeams | Where-Object { $_.RatingDelta -le $RatingDeltaMax }
+    $ActiveOpponentTeams = $CloseOpponentTeams | Where-Object { $_.LastPlayedAgo -le $LastPlayedAgoMax }
+    $FinalOpponentTeams = if($ActiveOpponentTeams.Length -eq 0 -and
+        $CloseOpponentTeams.Length -le $Limit) {
+            $CloseOpponentTeams
+    } else {
+        $ActiveOpponentTeams
+    }
+    $UnmaskedPlayers = $FinalOpponentTeams |
         Sort-Object -Property RatingDelta |
         Select-Object -First $Limit |
         ForEach-Object { Unmask-Player -Player $_.Members[0] }
