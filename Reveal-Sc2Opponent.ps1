@@ -66,6 +66,7 @@ $CurrentGame = [PSCustomObject]@{
     Players = @()
     ActivePlayerCount = 0
     Status = [GameStatus]::Old
+    Finished = $true
 }
 if($Notification) {
     $Load = [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime]
@@ -187,6 +188,10 @@ function Get-Game {
     }
     $ActivePlayerCount = ($Game.Players | Where {$_.result -eq "undecided"} | Measure-Object).Count
     Add-Member -InputObject $Game -Name ActivePlayerCount -Value $ActivePlayerCount -MemberType NoteProperty
+    $Finished = $Game -eq $null -or
+        $Game.Players.Length -eq 0 -or
+        $Game.ActivePlayerCount -le $Game.Players.Length / 2
+    Add-Member -InputObject $Game -Name Finished -Value $Finished -MemberType NoteProperty
     $Status = if($Game.Players.Length -eq 0) {
         [GameStatus]::None
     } else { 
@@ -359,9 +364,20 @@ function Write-All {
 
 Write-Host "Script loaded, waiting for games"
 while($true) {
-    $Script:CurrentGame = Get-Game `
+    $Game = Get-Game `
         -CurrentGame $Script:CurrentGame `
         -ValidPlayerCount $Script:ValidPlayerCount
+    if(-not [string]::IsNullOrEmpty($FilePath) -and
+        $Game -ne $null -and (
+            ($Game.Status -eq [GameStatus]::Unsupported -and
+                $Game.Status -ne $CurrentGame.Status) -or
+            ($Game.Finished -and -not $CurrentGame.Finished)
+        ) -and
+        (Test-Path -Path $FilePath)) {
+            Clear-Content -Path $FilePath
+            Write-Verbose "Cleared $FilePath"
+    }
+    $Script:CurrentGame = $Game
     if($Script:CurrentGame.Status -eq [GameStatus]::New) {
         Write-Host "New game detected"
         $Opponent = Get-Opponent `
