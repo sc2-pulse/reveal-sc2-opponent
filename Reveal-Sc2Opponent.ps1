@@ -1,7 +1,7 @@
 ﻿
 <#PSScriptInfo
 
-.VERSION 0.1.0
+.VERSION 0.2.0
 
 .GUID db8ffc68-4388-4119-b437-1f56c999611e
 
@@ -38,7 +38,7 @@
 #> 
 param(
     [Parameter(Mandatory=$true)]
-    [int64]$CharacterId,
+    [int64[]]$CharacterId,
     [Parameter(Mandatory=$true)]
     [ValidateSet("terran", "protoss", "zerg", "random")]
     [string]$Race,
@@ -48,6 +48,8 @@ param(
     [int32]$RatingDeltaMax = 1000,
     [ValidateRange(1, [int32]::MaxValue)]
     [int32]$LastPlayedAgoMax = 2400,
+    [ValidateSet("us", "eu", "kr", "cn")]
+    [string[]]$ActiveRegion = @("us", "eu", "kr"),
     [string]$FilePath,
     [switch]$Notification,
     [switch]$Test
@@ -141,19 +143,6 @@ function Invoke-EnhancedRestMethod {
     }
     return $Encoding.GetString($Response.RawContentStream.ToArray()) | ConvertFrom-Json
 }
-
-$Character = (Invoke-EnhancedRestMethod -Uri "${Sc2PulseApiRoot}/character/${CharacterId}")[0]
-if($null -eq $Character) {
-    Write-Error "Character ${CharacterId} not found"
-    exit 1
-}
-$Region = $Character.Region
-$CharacterName = $Character.Name.Substring(0, $Character.Name.IndexOf("#"))
-Write-Host $Character
-$Season = (Invoke-EnhancedRestMethod -Uri "${Sc2PulseApiRoot}/season/list/all") |
-     Where-Object { $_.Region -eq $Region } |
-     Select-Object -ExpandProperty BattlenetId -First 1
-Write-Host "Season ${Season}"
 
 function Is-Fake-Tag {
     param([string]$Tag)
@@ -252,53 +241,65 @@ function Get-Game {
     return $Game
 }
 
-function Get-PlayerTeam {
+function Get-Team {
     param(
         [int32] $Season,
         [string] $Race,
         [string] $Queue,
-        [int64] $CharacterId,
-        [int32] $Depth = 3
+        [int64[]] $CharacterId
     )
-
-    for(($i = 0); $i -lt $Depth; $i++) {
-        $PlayerTeam = (Invoke-EnhancedRestMethod -Uri ("${Sc2PulseApiRoot}/group/team" +
-            "?season=$($Season - $i)" +
+    $CharacterTeams = @()
+    for(($i = 0); $i -lt $CharacterId.Length;)
+    {
+        $EndIx = [Math]::Min($i + $Script:TeamBatchSize - 1, $CharacterId.Length - 1);
+        $CharacterIdBatch = $CharacterId[$i..$EndIx]
+        $CharacterTeamBatch = Invoke-EnhancedRestMethod -Uri ("${Sc2PulseApiRoot}/group/team" +
+            "?season=${Season}" +
             "&queue=${Queue}" +
             "&race=${Race}" +
-            "&characterId=${CharacterId}"))
-        if($PlayerTeam -ne $null -and $PlayerTeam.Length -eq 1) {
-            return $PlayerTeam[0]
+            "&characterId=$([String]::Join(',', $CharacterIdBatch))")
+        $CharacterTeams += $CharacterTeamBatch
+        $i += $Script:TeamBatchSize
+    }
+    return $CharacterTeams
+}
+
+function Get-TeamMemberRace {
+    param([Object] $TeamMember)
+
+    $Race = $null
+    $Games = 0
+    foreach($CurRace in $Script:Races.Values) {
+        $CurGames = $TeamMember."${CurRace}GamesPlayed"
+        if($CurGames -gt $Games) {
+            $Race = $CurRace
+            $Games = $CurGames
         }
     }
+    return $Race
+}
+
+function Get-TeamRace {
+    param([Object] $Team)
+
+    if($Team.Members.Length -ne 1) {
+        return $null
+    }
+    return Get-TeamMemberRace $Team.Members[0]
 }
 
 function Get-UnmaskedPlayer {
     param(
+        [Object] $PlayerTeam,
         [Object] $GameOpponent,
         [int32] $Season,
         [string] $Race,
         [string] $Queue,
-        [int64] $CharacterId,
         [int32] $LastPlayedAgoMax,
         [int32] $RatingDeltaMax,
         [int32] $Limit
     )
     $SearchActivity = "Opponent search"
-    Write-Progress `
-        -Activity $SearchActivity `
-        -Status "Pulling reference team" `
-        -PercentComplete 0
-    $PlayerTeam = Get-PlayerTeam `
-        -Season $Season `
-        -Race $Race `
-        -Queue $Queue `
-        -CharacterId $CharacterId
-    if($PlayerTeam -eq $null) {
-        Write-Error "Can't find the reference team. Play at least 1 ranked game and wait for several minutes."
-        Write-Progress -Activity $SearchActivity -Status "Failed" -Completed
-        return
-    }
     Write-Host ("Searching for ${Region} $($Races[$GameOpponent.Race]) $($GameOpponent.Name)" +
         ", $([Math]::Max($PlayerTeam.rating - $RatingDeltaMax, 0))" +
         "-$([Math]::Max($PlayerTeam.rating + $RatingDeltaMax, 0)) MMR" +
@@ -306,7 +307,7 @@ function Get-UnmaskedPlayer {
     Write-Progress `
         -Activity $SearchActivity `
         -Status "Searching for opponents" `
-        -PercentComplete 10
+        -PercentComplete 0
     $OpponentIds = $(Invoke-EnhancedRestMethod -Uri ("${Sc2PulseApiRoot}/character/search/advanced" +
         "?season=${Season}" +
         "&region=${Region}" +
@@ -407,6 +408,58 @@ function Write-All {
     }
 }
 
+function Get-PlayerProfile {
+    param(
+        [int32[]]$Season,
+        [string]$Queue,
+        [int64[]]$CharacterId
+    )
+
+    $PlayerTeams = @()
+    foreach($CurSeasonId in $Season) {
+        $PlayerTeams += (Get-Team -Season $CurSeasonId -CharacterId $CharacterId -Queue $Queue)
+    }
+    if($PlayerTeams.Length -eq 0) { return $null; }
+    $Now = [DateTimeOffset]::Now
+    foreach($Team in $PlayerTeams) {
+        $LastPlayedParsed = [DateTimeOffset]::Parse(
+            $Team.LastPlayed,
+            $null,
+            [System.Globalization.DateTimeStyles]::RoundtripKind)
+        $LastPlayedAgo = $Now.Subtract($LastPlayedParsed).TotalSeconds
+        Add-Member -InputObject $Team -Name LastPlayedAgo -Value $LastPlayedAgo -MemberType NoteProperty
+    }
+    $RecentTeam = $PlayerTeams |
+        Sort-Object -Property LastPlayedAgo |
+        Select-Object -First 1
+    $PlayerProfile = [PSCustomObject]@{
+        Team = $RecentTeam
+        Character = $RecentTeam.Members[0].Character
+        CharacterName = $RecentTeam.Members[0].Character.Name.Substring(
+            0, $RecentTeam.Members[0].Character.Name.IndexOf("#"))
+        Season = $RecentTeam.Season
+        Region = $RecentTeam.Region
+        Race = Get-TeamRace $RecentTeam
+    }
+    return $PlayerProfile
+}
+
+$Seasons = (Invoke-EnhancedRestMethod -Uri "${Sc2PulseApiRoot}/season/list/all") |
+    Group-Object -Property Region -AsHashTable
+$SeasonIds = $Seasons.Values |
+    ForEach-Object { $_ | Select-Object -First 1 } |
+    Where-Object {$ActiveRegion -contains $_.Region} |
+    Select-Object -ExpandProperty BattlenetId -Unique
+Write-Host "Active seasons: ${SeasonIds}"
+$PlayerProfile =  Get-PlayerProfile `
+    -Season $Script:SeasonIds `
+    -Queue $Script:Queue1v1 `
+    -CharacterId $Script:CharacterId
+if($PlayerProfile -eq $null) {
+    Write-Error "Can't find the reference team. Play at least 1 ranked game and wait for several minutes."
+    return 10
+}
+Write-Host $PlayerProfile
 Write-Host "Script loaded, waiting for games"
 while($true) {
     $Game = Get-Game `
@@ -425,17 +478,22 @@ while($true) {
     $Script:CurrentGame = $Game
     if($Script:CurrentGame.Status -eq [GameStatus]::New) {
         Write-Host "New game detected"
+        $PlayerProfile  = Get-PlayerProfile `
+            -Season $Script:SeasonIds `
+            -Queue $Script:Queue1v1 `
+            -CharacterId $Script:CharacterId
+        Write-Host "Using profile ${PlayerProfile}"
         $Opponent = Get-Opponent `
-            -PlayerName $Script:CharacterName `
-            -PlayerRace $Script:Race `
+            -PlayerName $PlayerProfile.CharacterName `
+            -PlayerRace $PlayerProfile.Race `
             -Player $Script:CurrentGame.Players
         if($Script:Test) { $Opponent.name = 'llllllllllll' } 
         $UnmaskedPlayers = (Get-UnmaskedPlayer `
             -GameOpponent $Opponent `
-            -Season $Script:Season `
-            -Race $Script:Race `
+            -Season $PlayerProfile.Season `
+            -Race $PlayerProfile.Race `
             -Queue $Script:Queue1v1 `
-            -CharacterId $Script:CharacterId `
+            -PlayerTeam $PlayerProfile.Team `
             -LastPlayedAgoMax $Script:LastPlayedAgoMax `
             -RatingDeltaMax $Script:RatingDeltaMax `
             -Limit $Script:Limit

@@ -16,7 +16,7 @@ The opponent's in-game tag will be replaced with the following info, sorted by p
 ## Limitations
 * Ranked 1v1 only. Doesn't work with unranked opponents.
 * Opponents who are playing their first game in last 40 minutes can't be detected.
-* SC2 Pulse is about 5 minutes behind, and revealed data is provided by SC2 Pulse editors, so the data is approximate and may be invalid.
+* SC2 Pulse is about 5 minutes behind, and revealed data is provided by SC2 Pulse editors, so the data is approximate and may be invalid. This also means that active profiles are not detected instantly when you switch an account, region, or race.
 * Windows console doesn't support asian glyphs by default. If you use the console and want to see glyphs, then you need to change the default font to `MS Gothic`. RMB on the console header->Defaults->Font.
 * When using Windows notifications for the first time, Windows will ask you for emergency notification permission for this script. You must allow it. Emergency notifications are always on top of everything else, otherwise notifications will be created but you won't see them because they will be below the SC2 game client window. Make sure the `Get notifications from apps and other senders` option is enabled in `Notification & Actions` section of your Windows settings.
 
@@ -45,9 +45,19 @@ You need to provide a sc2pulse character id and a race you will be playing. You 
 
 ### reveal-sc2-opponent.bat
 Use this script to add parameters that rarely change(character id, race) or customize the opponent search algorithm. RMB->edit to edit. `-ParameterName parameterValue` or just `-ParameterName` for switch parameters.
+Example:
+```
+start powershell ^
+-NoExit ^
+-ExecutionPolicy bypass ^
+-C "./Reveal-Sc2Opponent.ps1" ^
+-FilePath opponent.txt ^
+-Limit 3 ^
+-CharacterId 1,2,3,4,5
+```
 
 ### Required parameters
-* `CharacterId` SC2Pulse character id
+* `CharacterId` SC2Pulse character ids, array.
 * `Race` The race you will be playing, lower case.
 
 ### Output parameters
