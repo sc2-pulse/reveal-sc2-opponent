@@ -1,7 +1,7 @@
 ﻿
 <#PSScriptInfo
 
-.VERSION 0.2.0
+.VERSION 0.2.1
 
 .GUID db8ffc68-4388-4119-b437-1f56c999611e
 
@@ -241,6 +241,7 @@ function Get-Game {
     return $Game
 }
 
+
 function Get-Team {
     param(
         [int32] $Season,
@@ -318,27 +319,15 @@ function Get-UnmaskedPlayer {
         Write-Progress -Activity $SearchActivity -Status "Failed" -Completed
         return
     }
-    $OpponentTeams = @()
     Write-Progress `
         -Activity $SearchActivity `
         -Status "Pulling opponent teams" `
         -PercentComplete 40
-    for(($i = 0); $i -lt $OpponentIds.Length;)
-    {
-        $EndIx = [Math]::Min($i + $Script:TeamBatchSize - 1, $OpponentIds.Length - 1);
-        $OpponendIdBatch = $OpponentIds[$i..$EndIx]
-        $OpponentTeamBatch = Invoke-EnhancedRestMethod -Uri ("${Sc2PulseApiRoot}/group/team" +
-            "?season=${Season}" +
-            "&queue=${Queue}" +
-            "&race=$($Races[$GameOpponent.Race])" +
-            "&characterId=$([String]::Join(',', $OpponendIdBatch))")
-        $OpponentTeams += $OpponentTeamBatch
-        $i += $Script:TeamBatchSize
-        Write-Progress `
-            -Activity "Opponent search" `
-            -Status "Pulling opponent teams" `
-            -PercentComplete (40 + (($EndIx / $OpponentIds.Length) * 60))
-    }
+    $OpponentTeams = Get-Team `
+        -Season $Season `
+        -Queue $Queue `
+        -Race $Script:Races[$GameOpponent.Race] `
+        -CharacterId $OpponentIds
     $Now = [DateTimeOffset]::Now
     foreach($Team in $OpponentTeams) {
         $LastPlayedParsed = [DateTimeOffset]::Parse(
