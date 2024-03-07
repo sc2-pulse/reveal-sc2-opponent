@@ -54,7 +54,6 @@ param(
     [switch]$Test
 )
 
-Test-ScriptFileInfo $PSCommandPath
 <#
     .quickedit
     disable console quick edit mode to prevent the user from accidentally
@@ -69,6 +68,8 @@ public static extern IntPtr GetStdHandle(int handle);
 $Handle = [Win32.NativeMethods]::GetStdHandle(-10)
 [Win32.NativeMethods]::SetConsoleMode($Handle, 0x0080)
 Write-Verbose "Disabled console quick edit"
+
+Test-ScriptFileInfo $PSCommandPath
 
 Add-Type -AssemblyName Microsoft.PowerShell.Commands.Utility
 if($Test) { Write-Warning "Test mode" }
