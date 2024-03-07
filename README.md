@@ -71,4 +71,5 @@ start powershell ^
 
 ### Misc parameters
 * `Race` The race you will be playing, lower case. Overrides auto detected race from SC2 Pulse. Useful if you want to change an account/region/race but don't want to wait for SC2 Pulse to catch up.
+* `DisableQuickEdit` Disable console `QuickEdit` mode. Prevents users from accidently pausing the script by clicking on the console window.
 * `Test` Test mode for devs. Replaces your name with a barcode and allows you to test the script in a custom/vs ai game.
