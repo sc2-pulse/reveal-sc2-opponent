@@ -1,5 +1,5 @@
 # reveal-sc2-opponent
-reveal-sc2-opponent is a Windows PowerShell script that reveals well-known tags or BattleTags of your ranked 1v1 opponents via the StarCraft2 game client and [SC2 Pulse](https://github.com/sc2-pulse/sc2-pulse) APIs. Requires Windows 10+.
+reveal-sc2-opponent is a Windows PowerShell script that reveals well-known tags or BattleTags and MMR of your ranked 1v1 opponents via the StarCraft2 game client and [SC2 Pulse](https://github.com/sc2-pulse/sc2-pulse) APIs. Requires Windows 10+.
 
 ## Use cases
 * OBS: text source via file output.

@@ -179,6 +179,12 @@ function Unmask-Player {
     return $UnmaskedPlayer
 }
 
+function Unmask-Team {
+    param([Object] $Team)
+
+    return "$(Unmask-Player -Player $Team.Members[0]) $($Team.Rating)MMR"
+}
+
 function Get-Opponent {
     param(
         [string] $PlayerName,
@@ -354,7 +360,7 @@ function Get-UnmaskedPlayer {
     $UnmaskedPlayers = $FinalOpponentTeams |
         Sort-Object -Property RatingDelta |
         Select-Object -First $Limit |
-        ForEach-Object { Unmask-Player -Player $_.Members[0] }
+        ForEach-Object { Unmask-Team -Team $_ }
     Write-Progress `
         -Activity "Opponent search" `
         -Status "Completed" `
