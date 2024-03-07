@@ -401,7 +401,8 @@ function Get-PlayerProfile {
     param(
         [int32[]]$Season,
         [string]$Queue,
-        [int64[]]$CharacterId
+        [int64[]]$CharacterId,
+        [string]$OverrideRace
     )
 
     $PlayerTeams = @()
@@ -430,9 +431,17 @@ function Get-PlayerProfile {
         Region = $RecentTeam.Region
         Race = Get-TeamRace $RecentTeam
     }
+    if(-not [string]::IsNullOrEmpty($OverrideRace) -and
+        $PlayerProfile.Race -ne $OverrideRace) {
+        Write-Warning "Profile race has been overridden: $($PlayerProfile.Race)->$OverrideRace"
+        $PlayerProfile.Race = $OverrideRace
+    }
     return $PlayerProfile
 }
 
+if(-not [string]::IsNullOrEmpty($Race) -and $CharacterId.Length -gt 1) {
+    Write-Warning "Using race override with multiple character ids"
+} 
 $Seasons = (Invoke-EnhancedRestMethod -Uri "${Sc2PulseApiRoot}/season/list/all") |
     Group-Object -Property Region -AsHashTable
 $SeasonIds = $Seasons.Values |
@@ -443,7 +452,8 @@ Write-Host "Active seasons: ${SeasonIds}"
 $PlayerProfile =  Get-PlayerProfile `
     -Season $Script:SeasonIds `
     -Queue $Script:Queue1v1 `
-    -CharacterId $Script:CharacterId
+    -CharacterId $Script:CharacterId `
+    -OverrideRace $Script:Race
 if($PlayerProfile -eq $null) {
     Write-Error "Can't find the reference team. Play at least 1 ranked game and wait for several minutes."
     return 10
@@ -470,7 +480,8 @@ while($true) {
         $PlayerProfile  = Get-PlayerProfile `
             -Season $Script:SeasonIds `
             -Queue $Script:Queue1v1 `
-            -CharacterId $Script:CharacterId
+            -CharacterId $Script:CharacterId `
+            -OverrideRace $Script:Race
         Write-Host "Using profile ${PlayerProfile}"
         $Opponent = Get-Opponent `
             -PlayerName $PlayerProfile.CharacterName `

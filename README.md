@@ -58,7 +58,7 @@ start powershell ^
 
 ### Required parameters
 * `CharacterId` SC2Pulse character ids, array.
-* `Race` The race you will be playing, lower case.
+* `Race` The race you will be playing, lower case. Overrides auto detected race from SC2 Pulse. Useful if you want to change an account/region/race but don't want to wait for SC2 Pulse to catch up.
 
 ### Output parameters
 * `FilePath` Revealed opponents will be dumped into this file.
