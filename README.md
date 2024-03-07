@@ -37,7 +37,7 @@ Considering all of the above it should be safe to use as it doesn't violate any 
 Download script files(.bat and .ps1) to the same directory. Run the `reveal-sc2-opponent.bat` script.
 Depending on your security settings, Windows might prevent the script from running. Click `More info`->`Run anyway`. This Windows warning doesn't mean the script is dangerous, it just means that you downloaded the script from the internet and it's not signed by a trusted key, so Windows tries to protect you. Don't run such scripts if you don't trust their devs.
 
-You need to provide a sc2pulse character id and a race you will be playing. You can launch the script and provide the parameters manually every time, or you can add additional parameters to the `reveal-sc2-opponent.bat` script.
+You need to provide a sc2pulse character id you will be playing. You can launch the script and provide the parameters manually every time, or you can add additional parameters to the `reveal-sc2-opponent.bat` script.
 
 ### SC2Pulse character id
 * Find your profile here https://sc2pulse.nephest.com/sc2/?#search.
@@ -58,7 +58,6 @@ start powershell ^
 
 ### Required parameters
 * `CharacterId` SC2Pulse character ids, array.
-* `Race` The race you will be playing, lower case. Overrides auto detected race from SC2 Pulse. Useful if you want to change an account/region/race but don't want to wait for SC2 Pulse to catch up.
 
 ### Output parameters
 * `FilePath` Revealed opponents will be dumped into this file.
@@ -71,4 +70,5 @@ start powershell ^
 * `Limit`(3) Opponent suggestion limit
 
 ### Misc parameters
+* `Race` The race you will be playing, lower case. Overrides auto detected race from SC2 Pulse. Useful if you want to change an account/region/race but don't want to wait for SC2 Pulse to catch up.
 * `Test` Test mode for devs. Replaces your name with a barcode and allows you to test the script in a custom/vs ai game.

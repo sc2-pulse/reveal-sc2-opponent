@@ -39,7 +39,6 @@
 param(
     [Parameter(Mandatory=$true)]
     [int64[]]$CharacterId,
-    [Parameter(Mandatory=$true)]
     [ValidateSet("terran", "protoss", "zerg", "random")]
     [string]$Race,
     [ValidateRange(1, 10)]
@@ -88,7 +87,7 @@ $Sc2PulseApiRoot = "https://sc2pulse.nephest.com/sc2/api"
 $Sc2ClientApiRoot = "http://127.0.0.1:6119"
 $Queue1v1 = "LOTV_1V1"
 $ValidPlayerCount = if($Test) { 1 } else { 2 }
-$Race = $Race.ToUpper()
+if(-not [string]::IsNullOrEmpty($Race)) { $Race = $Race.ToUpper() }
 $Races = @{
     Terr = "TERRAN"
     Prot = "PROTOSS"
