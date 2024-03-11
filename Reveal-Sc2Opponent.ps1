@@ -53,6 +53,8 @@ param(
     [switch]$Notification,
     [ValidateSet("none", "short", "long")]
     [string]$RatingFormat = "none",
+    [ValidateSet("none", "short", "long")]
+    [string]$RaceFormat = "none",
     [switch]$DisableQuickEdit,
     [switch]$Test
 )
@@ -166,6 +168,42 @@ function Is-Barcode() {
     return $PlayerName -match '^[IiLl]+#\d+$'
 }
 
+function Format-Race() {
+    param(
+        [string]$Race,
+        [OutFormat]$RaceFormat
+    )
+
+    return $(switch($RaceFormat) {
+        Short { $Race.Substring(0, 1).toUpper() }
+        Long { $Race.toLower() }
+    })
+}
+
+function Get-TeamMemberRace {
+    param([Object] $TeamMember)
+
+    $Race = $null
+    $Games = 0
+    foreach($CurRace in $Script:Races.Values) {
+        $CurGames = $TeamMember."${CurRace}GamesPlayed"
+        if($CurGames -gt $Games) {
+            $Race = $CurRace
+            $Games = $CurGames
+        }
+    }
+    return $Race
+}
+
+function Get-TeamRace {
+    param([Object] $Team)
+
+    if($Team.Members.Length -ne 1) {
+        return $null
+    }
+    return Get-TeamMemberRace $Team.Members[0]
+}
+
 function Unmask-Player {
     param([Object]$Player)
 
@@ -189,13 +227,32 @@ function Unmask-Player {
 function Unmask-Team {
     param(
         [Object] $Team,
-        [OutFormat] $RatingFormat
+        [OutFormat] $RatingFormat,
+        [OutFormat] $RaceFormat
     )
 
     $Unmasked = Unmask-Player -Player $Team.Members[0];
     switch($RatingFormat) {
         Short { $Unmasked += " " + $Team.Rating }
         Long { $Unmasked += " " + $Team.Rating + "MMR" }
+    }
+    if($RaceFormat -ne [OutFormat]::None) {
+        $Unmasked += " " + (Format-Race -Race (Get-TeamRace($Team)) -RaceFormat $RaceFormat)
+    }
+    return $Unmasked
+}
+
+function Unmask-GameOpponent {
+    param(
+        [Object] $GameOpponent,
+        [OutFormat] $RaceFormat
+    )
+
+    $Unmasked = $GameOpponent.Name
+    if($RaceFormat -ne [OutFormat]::None) {
+        $Unmasked += " " + (Format-Race `
+                -Race $Script:Races[$GameOpponent.Race] `
+                -RaceFormat $RaceFormat)
     }
     return $Unmasked
 }
@@ -289,30 +346,6 @@ function Get-Team {
     return $CharacterTeams
 }
 
-function Get-TeamMemberRace {
-    param([Object] $TeamMember)
-
-    $Race = $null
-    $Games = 0
-    foreach($CurRace in $Script:Races.Values) {
-        $CurGames = $TeamMember."${CurRace}GamesPlayed"
-        if($CurGames -gt $Games) {
-            $Race = $CurRace
-            $Games = $CurGames
-        }
-    }
-    return $Race
-}
-
-function Get-TeamRace {
-    param([Object] $Team)
-
-    if($Team.Members.Length -ne 1) {
-        return $null
-    }
-    return Get-TeamMemberRace $Team.Members[0]
-}
-
 function Get-UnmaskedPlayer {
     param(
         [Object] $PlayerTeam,
@@ -323,7 +356,8 @@ function Get-UnmaskedPlayer {
         [int32] $LastPlayedAgoMax,
         [int32] $RatingDeltaMax,
         [int32] $Limit,
-        [OutFormat] $RatingFormat
+        [OutFormat] $RatingFormat,
+        [OutFormat] $RaceFormat
     )
     $SearchActivity = "Opponent search"
     Write-Host ("Searching for ${Region} $($Races[$GameOpponent.Race]) $($GameOpponent.Name)" +
@@ -376,7 +410,12 @@ function Get-UnmaskedPlayer {
     $UnmaskedPlayers = $FinalOpponentTeams |
         Sort-Object -Property RatingDelta |
         Select-Object -First $Limit |
-        ForEach-Object { Unmask-Team -Team $_ -RatingFormat $RatingFormat }
+        ForEach-Object {
+            Unmask-Team `
+                -Team $_ `
+                -RatingFormat $RatingFormat `
+                -RaceFormat $RaceFormat
+        }
     Write-Progress `
         -Activity "Opponent search" `
         -Status "Completed" `
@@ -522,10 +561,13 @@ while($true) {
             -LastPlayedAgoMax $Script:LastPlayedAgoMax `
             -RatingDeltaMax $Script:RatingDeltaMax `
             -Limit $Script:Limit `
-            -RatingFormat $Script:RatingFormat
+            -RatingFormat $Script:RatingFormat `
+            -RaceFormat $Script:RaceFormat
         ) -join ", "
         if([string]::IsNullOrEmpty($UnmaskedPlayers)) {
-            $UnmaskedPlayers = $Opponent.Name
+            $UnmaskedPlayers = Unmask-GameOpponent `
+                -GameOpponent $Opponent `
+                -RaceFormat $Script:RaceFormat
             Write-Host $UnmaskedPlayers -ForegroundColor Red
         } else {
             Write-Host $UnmaskedPlayers -ForegroundColor Green

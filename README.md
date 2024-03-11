@@ -69,6 +69,9 @@ Some output parameters support format types: `none`, `short`, `long`
 * `RatingFormat`(none) Opponent MMR.
 	* `short` 1234
 	* `long` 1234MMR
+* `RaceFormat`(none) Opponent race
+	* `short` T
+	* `long` terran
 
 ### Opponent search parameters
 `()` default value

@@ -5,4 +5,5 @@ start powershell ^
 -DisableQuickEdit ^
 -FilePath opponent.txt ^
 -RatingFormat long ^
+-RaceFormat short ^
 -Limit 3
