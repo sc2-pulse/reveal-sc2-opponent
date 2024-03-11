@@ -1,7 +1,7 @@
 ﻿
 <#PSScriptInfo
 
-.VERSION 0.3.0
+.VERSION 0.4.0
 
 .GUID db8ffc68-4388-4119-b437-1f56c999611e
 
@@ -56,6 +56,7 @@ param(
     [ValidateSet("none", "short", "long")]
     [string]$RaceFormat = "none",
     [switch]$DisableQuickEdit,
+    [switch]$SelectProfile,
     [switch]$Test
 )
 
@@ -128,6 +129,7 @@ if($Notification) {
     $ToastNotifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($ToastAppId)
 }
 $TeamBatchSize = 200
+$OverrideTeam = -1
 
 function Invoke-EnhancedRestMethod {
     param(
@@ -328,6 +330,7 @@ function Get-Team {
         [int32] $Season,
         [string] $Race,
         [string] $Queue,
+        [int64] $TeamId = -1,
         [int64[]] $CharacterId
     )
     $CharacterTeams = @()
@@ -343,6 +346,7 @@ function Get-Team {
         $CharacterTeams += $CharacterTeamBatch
         $i += $Script:TeamBatchSize
     }
+    if($TeamId -ne -1) { $CharacterTeams = $CharacterTeams | Where-Object {$_.Id -eq $TeamId} }
     return $CharacterTeams
 }
 
@@ -461,31 +465,38 @@ function Write-All {
     }
 }
 
-function Get-PlayerProfile {
+function Get-PlayerTeams {
     param(
         [int32[]]$Season,
         [string]$Queue,
-        [int64[]]$CharacterId,
-        [string]$OverrideRace
+        [string]$Race,
+        [int64]$TeamId,
+        [int64[]]$CharacterId
     )
 
     $PlayerTeams = @()
     foreach($CurSeasonId in $Season) {
-        $PlayerTeams += (Get-Team -Season $CurSeasonId -CharacterId $CharacterId -Queue $Queue)
+        $PlayerTeams += (Get-Team `
+            -Season $CurSeasonId `
+            -Queue $Queue `
+            -Race $Race `
+            -TeamId $TeamId `
+            -CharacterId $CharacterId)
     }
-    if($PlayerTeams.Length -eq 0) { return $null; }
-    $Now = [DateTimeOffset]::Now
-    foreach($Team in $PlayerTeams) {
-        $LastPlayedParsed = [DateTimeOffset]::Parse(
-            $Team.LastPlayed,
-            $null,
-            [System.Globalization.DateTimeStyles]::RoundtripKind)
-        $LastPlayedAgo = $Now.Subtract($LastPlayedParsed).TotalSeconds
-        Add-Member -InputObject $Team -Name LastPlayedAgo -Value $LastPlayedAgo -MemberType NoteProperty
-    }
-    $RecentTeam = $PlayerTeams |
-        Sort-Object -Property LastPlayedAgo |
-        Select-Object -First 1
+    return $PlayerTeams
+}
+
+function Create-PlayerProfile {
+    param(
+        [Parameter(
+            Position=0,
+            ValueFromPipeline=$true,
+            ValueFromPipelineByPropertyName=$true)
+        ]
+        [Object] $RecentTeam
+    )
+    if($RecentTeam -eq $null) { return $null }
+
     $PlayerProfile = [PSCustomObject]@{
         Team = $RecentTeam
         Character = $RecentTeam.Members[0].Character
@@ -495,12 +506,74 @@ function Get-PlayerProfile {
         Region = $RecentTeam.Region
         Race = Get-TeamRace $RecentTeam
     }
-    if(-not [string]::IsNullOrEmpty($OverrideRace) -and
-        $PlayerProfile.Race -ne $OverrideRace) {
-        Write-Warning "Profile race has been overridden: $($PlayerProfile.Race)->$OverrideRace"
-        $PlayerProfile.Race = $OverrideRace
-    }
     return $PlayerProfile
+}
+
+function Find-PlayerProfile {
+    param(
+        [Object[]] $PlayerTeam
+    )
+
+    if($PlayerTeam -eq $null -or $PlayerTeam.Length -eq 0) { return $null }
+    $Now = [DateTimeOffset]::Now
+    foreach($Team in $PlayerTeam) {
+        $LastPlayedParsed = [DateTimeOffset]::Parse(
+            $Team.LastPlayed,
+            $null,
+            [System.Globalization.DateTimeStyles]::RoundtripKind)
+        $LastPlayedAgo = $Now.Subtract($LastPlayedParsed).TotalSeconds
+        Add-Member -InputObject $Team -Name LastPlayedAgo -Value $LastPlayedAgo -MemberType NoteProperty
+    }
+    $RecentTeam = $PlayerTeam |
+        Sort-Object -Property LastPlayedAgo |
+        Select-Object -First 1
+    return Create-PlayerProfile -RecentTeam $RecentTeam
+}
+
+function Edit-GuiTeam {
+    param(
+        [Parameter(
+            Position=0,
+            ValueFromPipeline=$true,
+            ValueFromPipelineByPropertyName=$true)
+        ]
+        [Object] $Team
+    )
+
+    $LastPlayedParsed = [DateTimeOffset]::Parse(
+        $Team.LastPlayed,
+        $null,
+        [System.Globalization.DateTimeStyles]::RoundtripKind)
+    Add-Member `
+        -InputObject $Team `
+        -Name LastPlayedDate `
+        -Value $LastPlayedParsed `
+        -MemberType NoteProperty
+    Add-Member `
+        -InputObject $Team `
+        -Name Race `
+        -Value (Get-TeamRace -Team $Team) `
+        -MemberType NoteProperty
+    Add-Member `
+        -InputObject $Team `
+        -Name Name `
+        -Value (($Team.Members | ForEach-Object {$_.Character.Name}) -join ', ') `
+        -MemberType NoteProperty
+    return $Team
+}
+
+function Get-GuiPlayerProfile {
+    param([Object[]] $Team)
+
+    if($Team -eq $null -or $Team.Length -eq 0) { return $null }
+    if($Team.Length -eq 1) { return Create-PlayerProfile $Team[0] }
+    return $Team |
+        Select-Object -Property Rating, Region, Race, Name, `
+            Wins, Losses, LastPlayedDate, `
+            Season, QueueType, League, Id, Members |
+                Sort-Object -Property LastPlayedDate -Descending |
+                Out-GridView -Title "Select your team" -OutputMode Single |
+                Create-PlayerProfile
 }
 
 if(-not [string]::IsNullOrEmpty($Race) -and $CharacterId.Length -gt 1) {
@@ -513,15 +586,30 @@ $SeasonIds = $Seasons.Values |
     Where-Object {$ActiveRegion -contains $_.Region} |
     Select-Object -ExpandProperty BattlenetId -Unique
 Write-Host "Active seasons: ${SeasonIds}"
-$PlayerProfile =  Get-PlayerProfile `
+$PlayerTeams = Get-PlayerTeams `
     -Season $Script:SeasonIds `
     -Queue $Script:Queue1v1 `
-    -CharacterId $Script:CharacterId `
-    -OverrideRace $Script:Race
-if($PlayerProfile -eq $null) {
+    -Race $Script:Race `
+    -TeamId $Script:OverrideTeam `
+    -CharacterId $Script:CharacterId
+if($PlayerTeams -eq $null -or $PlayerTeams.Length -eq 0) {
     Write-Error "Can't find the reference team. Play at least 1 ranked game and wait for several minutes."
     return 10
 }
+if($SelectProfile) {
+    $PlayerTeams = $PlayerTeams | ForEach-Object { $_ | Edit-GuiTeam }
+    $PlayerProfile = Get-GuiPlayerProfile -Team $PlayerTeams
+    if($PlayerProfile -eq $null) {
+        Write-Host "Profile wasn't selected, trying to find it."
+        $PlayerProfile = Find-PlayerProfile -PlayerTeam $PlayerTeams
+    } else {
+        $OverrideTeam = $PlayerProfile.Team.Id
+        Write-Host "Using team ${OverrideTeam}"
+    }
+} else {
+    $PlayerProfile = Find-PlayerProfile -PlayerTeam $PlayerTeams
+}
+
 Write-Host $PlayerProfile
 Write-Host "Script loaded, waiting for games"
 while($true) {
@@ -541,11 +629,13 @@ while($true) {
     $Script:CurrentGame = $Game
     if($Script:CurrentGame.Status -eq [GameStatus]::New) {
         Write-Host "New game detected"
-        $PlayerProfile  = Get-PlayerProfile `
+        $PlayerTeams = Get-PlayerTeams `
             -Season $Script:SeasonIds `
             -Queue $Script:Queue1v1 `
-            -CharacterId $Script:CharacterId `
-            -OverrideRace $Script:Race
+            -Race $Script:Race `
+            -TeamId $Script:OverrideTeam `
+            -CharacterId $Script:CharacterId
+        $PlayerProfile = Find-PlayerProfile -PlayerTeam $PlayerTeams
         Write-Host "Using profile ${PlayerProfile}"
         $Opponent = Get-Opponent `
             -PlayerName $PlayerProfile.CharacterName `

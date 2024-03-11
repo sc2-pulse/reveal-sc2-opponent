@@ -6,4 +6,5 @@ start powershell ^
 -FilePath opponent.txt ^
 -RatingFormat long ^
 -RaceFormat short ^
+-SelectProfile ^
 -Limit 3
