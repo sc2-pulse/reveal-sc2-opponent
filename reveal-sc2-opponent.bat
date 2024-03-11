@@ -4,4 +4,5 @@ start powershell ^
 -C "./Reveal-Sc2Opponent.ps1" ^
 -DisableQuickEdit ^
 -FilePath opponent.txt ^
+-RatingFormat long ^
 -Limit 3

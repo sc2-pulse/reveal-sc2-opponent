@@ -63,6 +63,12 @@ start powershell ^
 ### Output parameters
 * `FilePath` Revealed opponents will be dumped into this file.
 * `Notification` Switch parameter, enables Windows notifications.
+#### Parameter format
+Some output parameters support format types: `none`, `short`, `long`
+`()` default value
+* `RatingFormat`(none) Opponent MMR.
+	* `short` 1234
+	* `long` 1234MMR
 
 ### Opponent search parameters
 `()` default value

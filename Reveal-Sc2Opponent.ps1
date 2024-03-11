@@ -51,6 +51,8 @@ param(
     [string[]]$ActiveRegion = @("us", "eu", "kr"),
     [string]$FilePath,
     [switch]$Notification,
+    [ValidateSet("none", "short", "long")]
+    [string]$RatingFormat = "none",
     [switch]$DisableQuickEdit,
     [switch]$Test
 )
@@ -103,6 +105,11 @@ enum GameStatus {
     Old
     None
     Unsupported
+}
+enum OutFormat {
+    None
+    Short
+    Long
 }
 $CurrentGame = [PSCustomObject]@{
     IsReplay = $false
@@ -180,9 +187,17 @@ function Unmask-Player {
 }
 
 function Unmask-Team {
-    param([Object] $Team)
+    param(
+        [Object] $Team,
+        [OutFormat] $RatingFormat
+    )
 
-    return "$(Unmask-Player -Player $Team.Members[0]) $($Team.Rating)MMR"
+    $Unmasked = Unmask-Player -Player $Team.Members[0];
+    switch($RatingFormat) {
+        Short { $Unmasked += " " + $Team.Rating }
+        Long { $Unmasked += " " + $Team.Rating + "MMR" }
+    }
+    return $Unmasked
 }
 
 function Get-Opponent {
@@ -307,7 +322,8 @@ function Get-UnmaskedPlayer {
         [string] $Queue,
         [int32] $LastPlayedAgoMax,
         [int32] $RatingDeltaMax,
-        [int32] $Limit
+        [int32] $Limit,
+        [OutFormat] $RatingFormat
     )
     $SearchActivity = "Opponent search"
     Write-Host ("Searching for ${Region} $($Races[$GameOpponent.Race]) $($GameOpponent.Name)" +
@@ -360,7 +376,7 @@ function Get-UnmaskedPlayer {
     $UnmaskedPlayers = $FinalOpponentTeams |
         Sort-Object -Property RatingDelta |
         Select-Object -First $Limit |
-        ForEach-Object { Unmask-Team -Team $_ }
+        ForEach-Object { Unmask-Team -Team $_ -RatingFormat $RatingFormat }
     Write-Progress `
         -Activity "Opponent search" `
         -Status "Completed" `
@@ -505,7 +521,8 @@ while($true) {
             -PlayerTeam $PlayerProfile.Team `
             -LastPlayedAgoMax $Script:LastPlayedAgoMax `
             -RatingDeltaMax $Script:RatingDeltaMax `
-            -Limit $Script:Limit
+            -Limit $Script:Limit `
+            -RatingFormat $Script:RatingFormat
         ) -join ", "
         if([string]::IsNullOrEmpty($UnmaskedPlayers)) {
             $UnmaskedPlayers = $Opponent.Name
