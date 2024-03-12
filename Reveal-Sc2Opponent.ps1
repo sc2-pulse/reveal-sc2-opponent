@@ -1,7 +1,7 @@
 ﻿
 <#PSScriptInfo
 
-.VERSION 0.4.0
+.VERSION 0.5.0
 
 .GUID db8ffc68-4388-4119-b437-1f56c999611e
 
@@ -55,6 +55,7 @@ param(
     [string]$RatingFormat = "none",
     [ValidateSet("none", "short", "long")]
     [string]$RaceFormat = "none",
+    [string]$Separator = ", ",
     [switch]$DisableQuickEdit,
     [switch]$SelectProfile,
     [switch]$Test
@@ -653,7 +654,7 @@ while($true) {
             -Limit $Script:Limit `
             -RatingFormat $Script:RatingFormat `
             -RaceFormat $Script:RaceFormat
-        ) -join ", "
+        ) -join $Script:Separator
         if([string]::IsNullOrEmpty($UnmaskedPlayers)) {
             $UnmaskedPlayers = Unmask-GameOpponent `
                 -GameOpponent $Opponent `

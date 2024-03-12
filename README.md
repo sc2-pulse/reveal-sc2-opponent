@@ -72,6 +72,7 @@ Some output parameters support format types: `none`, `short`, `long`
 * `RaceFormat`(none) Opponent race
 	* `short` T
 	* `long` terran
+* `Separator`(, ) Opponent separator. Used when there are more than 1 opponent suggestions.
 
 ### Opponent search parameters
 `()` default value
