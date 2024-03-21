@@ -8,4 +8,4 @@ start powershell ^
 -RaceFormat short ^
 -Separator `r`n ^
 -SelectProfile ^
--Limit 3
+-Limit 3 ^
